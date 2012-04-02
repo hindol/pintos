@@ -1,6 +1,7 @@
 #ifndef THREADS_THREAD_H
 #define THREADS_THREAD_H
 
+#include "threads/synch.h"
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
@@ -88,6 +89,11 @@ struct thread
     char name[16];                      /* Name (for debugging purposes). */
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
+
+    int64_t wakeup_time;                /* Thread wakeup time in ticks. */
+    struct semaphore timer_sema;
+    struct list_elem timer_elem;        /* List element for timer_wait_list. */
+
     struct list_elem allelem;           /* List element for all threads list. */
 
     /* Shared between thread.c and synch.c. */
@@ -137,5 +143,9 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
+
+/* Compare two threads by their wakeup_time.
+   If true, first thread has earlier wakeup_time. */
+bool less_wakeup (const struct list_elem *left, const struct list_elem *right, void *aux UNUSED);
 
 #endif /* threads/thread.h */

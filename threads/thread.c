@@ -469,6 +469,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->magic = THREAD_MAGIC;
+  sema_init (&t->timer_sema, 0); /* Initialize timer_sema with false. Used as a binary semaphore. */
   list_push_back (&all_list, &t->allelem);
 }
 
@@ -580,6 +581,15 @@ allocate_tid (void)
   lock_release (&tid_lock);
 
   return tid;
+}
+
+/* Compare two threads by their wakeup_time.
+   If true, first thread has earlier wakeup_time. */
+bool less_wakeup (const struct list_elem *left, const struct list_elem *right, void *aux UNUSED)
+{
+  const struct thread *tleft = list_entry (left, struct thread, timer_elem);
+  const struct thread *tright = list_entry (right, struct thread, timer_elem);
+  return tleft->wakeup_time < tright->wakeup_time;
 }
 
 /* Offset of `stack' member within `struct thread'.

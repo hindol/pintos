@@ -30,6 +30,9 @@ static void busy_wait (int64_t loops);
 static void real_time_sleep (int64_t num, int32_t denom);
 static void real_time_delay (int64_t num, int32_t denom);
 
+/* List of processes in THREAD_BLOCKED state. */
+static struct list timer_wait_list;
+
 /* Sets up the timer to interrupt TIMER_FREQ times per second,
    and registers the corresponding interrupt. */
 void
@@ -37,6 +40,7 @@ timer_init (void)
 {
   pit_configure_channel (0, 2, TIMER_FREQ);
   intr_register_ext (0x20, timer_interrupt, "8254 Timer");
+  list_init (&timer_wait_list);
 }
 
 /* Calibrates loops_per_tick, used to implement brief delays. */
@@ -89,11 +93,22 @@ timer_elapsed (int64_t then)
 void
 timer_sleep (int64_t ticks) 
 {
-  int64_t start = timer_ticks ();
+  struct thread *t = thread_current ();
+ 
+  if (ticks <= 0)
+    return;
+
+  t->wakeup_time = timer_ticks () + ticks;
 
   ASSERT (intr_get_level () == INTR_ON);
-  while (timer_elapsed (start) < ticks) 
-    thread_yield ();
+  
+  intr_disable ();
+  list_insert_ordered (&timer_wait_list, &t->timer_elem, less_wakeup, NULL);
+  intr_enable ();
+
+  /* Thread blocks itself by calling thread_block (). */
+  printf("Thread #%d: timer_sleep (%"PRId64")\n", t->tid);
+  sema_down (&t->timer_sema);
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -170,8 +185,25 @@ timer_print_stats (void)
 static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
+  struct thread *t;
+
   ticks++;
   thread_tick ();
+
+  while (!list_empty (&timer_wait_list))
+  {
+    t = list_entry (list_front (&timer_wait_list), struct thread, timer_elem);
+
+    /* Since the list is ordered, the first element is the earliest
+        to wake up. If it must wait, all others must wait. */
+    if (ticks < t->wakeup_time)
+      break;
+    
+    printf("Thread #%d: sema_up () on thread #%d\n",
+     thread_current ()->tid, t->tid);
+    sema_up (&t->timer_sema);
+    list_pop_front (&timer_wait_list);
+  }
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
