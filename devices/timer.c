@@ -107,7 +107,6 @@ timer_sleep (int64_t ticks)
   intr_enable ();
 
   /* Thread blocks itself by calling thread_block (). */
-  printf("Thread #%d: timer_sleep (%"PRId64")\n", t->tid, ticks);
   sema_down (&t->timer_sema);
 }
 
@@ -199,8 +198,6 @@ timer_interrupt (struct intr_frame *args UNUSED)
     if (ticks < t->wakeup_time)
       break;
     
-    printf("Thread #%d: sema_up () on thread #%d\n",
-     thread_current ()->tid, t->tid);
     sema_up (&t->timer_sema);
     list_pop_front (&timer_wait_list);
   }
