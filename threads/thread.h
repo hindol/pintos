@@ -144,8 +144,15 @@ void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
-/* Compare two threads by their wakeup_time.
-   If true, first thread has earlier wakeup_time. */
-bool less_wakeup (const struct list_elem *left, const struct list_elem *right, void *aux UNUSED);
+/* Compare two threads by their wakeup_time. If wakeup_time
+    same, compare thread priorities to break the tie.
+   If true, first thread has earlier wakeup_time and in case of
+    a tie, higher priority. */
+bool less_wakeup_prio (const struct list_elem *left,
+ const struct list_elem *right, void *aux UNUSED);
+
+/* Comparison function that prefers the threas with higher priority. */
+bool more_prio (const struct list_elem *left,
+ const struct list_elem *right, void *aux UNUSED);
 
 #endif /* threads/thread.h */

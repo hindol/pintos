@@ -103,11 +103,11 @@ timer_sleep (int64_t ticks)
   ASSERT (intr_get_level () == INTR_ON);
   
   intr_disable ();
-  list_insert_ordered (&timer_wait_list, &t->timer_elem, less_wakeup, NULL);
+  list_insert_ordered (&timer_wait_list, &t->timer_elem, less_wakeup_prio, NULL);
   intr_enable ();
 
   /* Thread blocks itself by calling thread_block (). */
-  printf("Thread #%d: timer_sleep (%"PRId64")\n", t->tid);
+  printf("Thread #%d: timer_sleep (%"PRId64")\n", t->tid, ticks);
   sema_down (&t->timer_sema);
 }
 

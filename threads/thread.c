@@ -583,15 +583,32 @@ allocate_tid (void)
   return tid;
 }
 
-/* Compare two threads by their wakeup_time.
-   If true, first thread has earlier wakeup_time. */
-bool less_wakeup (const struct list_elem *left, const struct list_elem *right, void *aux UNUSED)
+/* Compare two threads by their wakeup_time. If wakeup_time
+    same, compare thread priorities to break the tie.
+   If true, first thread has earlier wakeup_time and in case of
+    a tie, higher priority. */
+bool less_wakeup_prio (const struct list_elem *left,
+ const struct list_elem *right, void *aux UNUSED)
 {
   const struct thread *tleft = list_entry (left, struct thread, timer_elem);
   const struct thread *tright = list_entry (right, struct thread, timer_elem);
-  return tleft->wakeup_time < tright->wakeup_time;
+
+  if (tleft->wakeup_time != tright->wakeup_time)
+    return tleft->wakeup_time < tright->wakeup_time;
+  else
+    return tleft->priority >= tright->priority;
 }
-
+
+/* Comparison function that prefers the thread with higher priority. */
+bool more_prio (const struct list_elem *left,
+ const struct list_elem *right, void *aux UNUSED)
+{
+  const struct thread *tleft = list_entry (left, struct thread, timer_elem);
+  const struct thread *tright = list_entry (right, struct thread, timer_elem);
+
+  return tleft->priority >= tright->priority;
+}
+
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
