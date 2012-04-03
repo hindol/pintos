@@ -245,8 +245,18 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  list_push_back (&ready_list, &t->elem);
+  list_insert_ordered (&ready_list, &t->elem, more_prio, NULL);
   t->status = THREAD_READY;
+
+  /* Whenever a thread is unblocked, check if it has higher priority than
+      the currently running thread. If so, yield. Note that during thread
+      creation, a blocked thread is created first and then unblocked. */
+  if (t->priority > thread_current ()->priority && thread_current () != idle_thread)
+    if (!intr_context ())
+      thread_yield ();
+    else
+      intr_yield_on_return ();
+
   intr_set_level (old_level);
 }
 
@@ -316,7 +326,7 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread) 
-    list_push_back (&ready_list, &cur->elem);
+    list_insert_ordered (&ready_list, &cur->elem, more_prio, NULL);
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -344,6 +354,12 @@ void
 thread_set_priority (int new_priority) 
 {
   thread_current ()->priority = new_priority;
+
+  /* If current thread's priority falls below another thread
+      in the ready_list, yield. */
+  struct thread *t = list_entry (list_front (&ready_list), struct thread, elem);
+  if (t->priority > new_priority)
+    thread_yield ();
 }
 
 /* Returns the current thread's priority. */
@@ -596,7 +612,7 @@ bool less_wakeup_prio (const struct list_elem *left,
   if (tleft->wakeup_time != tright->wakeup_time)
     return tleft->wakeup_time < tright->wakeup_time;
   else
-    return tleft->priority >= tright->priority;
+    return tleft->priority > tright->priority;
 }
 
 /* Comparison function that prefers the thread with higher priority. */
@@ -606,7 +622,7 @@ bool more_prio (const struct list_elem *left,
   const struct thread *tleft = list_entry (left, struct thread, timer_elem);
   const struct thread *tright = list_entry (right, struct thread, timer_elem);
 
-  return tleft->priority >= tright->priority;
+  return tleft->priority > tright->priority;
 }
 
 /* Offset of `stack' member within `struct thread'.

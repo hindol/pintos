@@ -1,5 +1,7 @@
 #include "list.h"
 #include "../debug.h"
+#include "../stdio.h"
+#include "../../threads/thread.h"
 
 /* Our doubly linked lists have two header elements: the "head"
    just before the first element and the "tail" just after the
@@ -521,4 +523,18 @@ list_min (struct list *list, list_less_func *less, void *aux)
           min = e; 
     }
   return min;
+}
+
+/* Print thread priorities of all threads in the list. */
+void list_print_thread_prio (struct list *list)
+{
+  struct list_elem *e;
+  struct thread *t;
+
+  for (e = list_begin (list); e != list_end (list); e = list_next (e))
+  {
+    t = list_entry (e, struct thread, elem);
+    printf ("p:%d->", t->priority);
+  }
+  printf ("\n");
 }
