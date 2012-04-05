@@ -621,8 +621,8 @@ bool less_wakeup (const struct list_elem *left,
 bool more_prio (const struct list_elem *left,
  const struct list_elem *right, void *aux UNUSED)
 {
-  const struct thread *tleft = list_entry (left, struct thread, timer_elem);
-  const struct thread *tright = list_entry (right, struct thread, timer_elem);
+  const struct thread *tleft = list_entry (left, struct thread, elem);
+  const struct thread *tright = list_entry (right, struct thread, elem);
 
   return tleft->priority > tright->priority;
 }
