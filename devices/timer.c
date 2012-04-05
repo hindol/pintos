@@ -103,7 +103,7 @@ timer_sleep (int64_t ticks)
   ASSERT (intr_get_level () == INTR_ON);
   
   intr_disable ();
-  list_insert_ordered (&timer_wait_list, &t->timer_elem, less_wakeup_prio, NULL);
+  list_insert_ordered (&timer_wait_list, &t->timer_elem, less_wakeup, NULL);
   intr_enable ();
 
   /* Thread blocks itself by calling thread_block (). */

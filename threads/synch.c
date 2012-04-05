@@ -111,15 +111,31 @@ void
 sema_up (struct semaphore *sema) 
 {
   enum intr_level old_level;
+  bool yield = false;
 
   ASSERT (sema != NULL);
 
   old_level = intr_disable ();
   if (!list_empty (&sema->waiters)) 
-    thread_unblock (list_entry (list_pop_front (&sema->waiters),
-                                struct thread, elem));
+  {
+    struct thread *t = list_entry (list_pop_front (&sema->waiters),
+                        struct thread, elem);
+    thread_unblock (t);
+
+    /* Yield to the newly unblocked thread if it has higher priority. */
+    if (t->priority > thread_current ()->priority)
+      yield = true;
+  }
   sema->value++;
   intr_set_level (old_level);
+
+  if (yield)
+  {
+    if (!intr_context ())
+      thread_yield ();
+    else
+      intr_yield_on_return ();
+  }
 }
 
 static void sema_test_helper (void *sema_);
@@ -198,8 +214,11 @@ lock_acquire (struct lock *lock)
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
 
-  sema_down (&lock->semaphore);
-  lock->holder = thread_current ();
+  if (!lock_try_acquire (lock)) /* Someone else holding the lock. */
+  {
+    sema_down (&lock->semaphore);
+    lock->holder = thread_current ();
+  }
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
@@ -234,7 +253,8 @@ lock_release (struct lock *lock)
   ASSERT (lock_held_by_current_thread (lock));
 
   lock->holder = NULL;
-  sema_up (&lock->semaphore);
+  sema_up (&lock->semaphore); /* May yield if the newly unblocked thread is of
+                                  higher priority than the current thread. */
 }
 
 /* Returns true if the current thread holds LOCK, false

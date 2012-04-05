@@ -148,7 +148,7 @@ int thread_get_load_avg (void);
     same, compare thread priorities to break the tie.
    If true, first thread has earlier wakeup_time and in case of
     a tie, higher priority. */
-bool less_wakeup_prio (const struct list_elem *left,
+bool less_wakeup (const struct list_elem *left,
  const struct list_elem *right, void *aux UNUSED);
 
 /* Comparison function that prefers the threas with higher priority. */
