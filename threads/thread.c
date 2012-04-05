@@ -209,6 +209,14 @@ thread_create (const char *name, int priority,
   /* Add to run queue. */
   thread_unblock (t);
 
+  /* Yield if the newly created thread has higher priority than
+      the running thread. */
+  if (t->priority > thread_current ()->priority)
+  {
+    ASSERT (!intr_context ());
+    thread_yield ();
+  }
+
   return tid;
 }
 
@@ -247,15 +255,6 @@ thread_unblock (struct thread *t)
   ASSERT (t->status == THREAD_BLOCKED);
   list_insert_ordered (&ready_list, &t->elem, more_prio, NULL);
   t->status = THREAD_READY;
-
-  /* Whenever a thread is unblocked, check if it has higher priority than
-      the currently running thread. If so, yield. Note that during thread
-      creation, a blocked thread is created first and then unblocked. */
-  if (t->priority > thread_current ()->priority && thread_current () != idle_thread)
-    if (!intr_context ())
-      thread_yield ();
-    else
-      intr_yield_on_return ();
 
   intr_set_level (old_level);
 }
