@@ -2,6 +2,7 @@
 #define THREADS_THREAD_H
 
 #include "threads/synch.h"
+#include <fixedpoint.h>
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
@@ -94,6 +95,10 @@ struct thread
     struct semaphore timer_sema;
     struct list_elem timer_elem;        /* List element for timer_wait_list. */
 
+    /* Thread statistics. */
+    int niceness;
+    fp_t recent_cpu;
+
     struct list_elem allelem;           /* List element for all threads list. */
 
     /* Shared between thread.c and synch.c. */
@@ -135,6 +140,7 @@ void thread_yield (void);
 /* Performs some operation on thread t, given auxiliary data AUX. */
 typedef void thread_action_func (struct thread *t, void *aux);
 void thread_foreach (thread_action_func *, void *);
+void thread_foreach_ready (thread_action_func *, void *);
 
 int thread_get_priority (void);
 void thread_set_priority (int);
