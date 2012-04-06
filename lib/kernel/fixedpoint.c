@@ -2,7 +2,7 @@
 #include "debug.h"
 
 /* FIXED_POINT = 2 ^ 14 */
-static const int32_t FIXED_POINT = (0x1 << 20);
+static const int32_t FIXED_POINT = (0x1 << 14);
 
 /* Conversion routines. */
 fp_t int_to_fp (int32_t i)

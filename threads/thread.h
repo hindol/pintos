@@ -25,6 +25,8 @@ typedef int tid_t;
 #define PRI_MIN 0                       /* Lowest priority. */
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
+#define PRI_INVALID (PRI_MIN - 1)       /* Some invalid priority.
+                                           Used to denote unused fields. */
 
 /* A kernel thread or user process.
 
@@ -90,6 +92,9 @@ struct thread
     char name[16];                      /* Name (for debugging purposes). */
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
+
+    struct thread *blocking_lock;       /* A non-NULL value here means this
+                                            thread is waiting on a lock. */
 
     int64_t wakeup_time;                /* Thread wakeup time in ticks. */
     struct semaphore timer_sema;

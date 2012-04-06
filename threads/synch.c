@@ -119,6 +119,9 @@ sema_up (struct semaphore *sema)
   old_level = intr_disable ();
   if (!list_empty (&sema->waiters)) 
   {
+    /* Although we keep this list sorted, some thread
+       may have received donation. Breaking the order. */
+    list_sort (&sema->waiters, more_prio, NULL);
     struct thread *t = list_entry (list_pop_front (&sema->waiters),
                         struct thread, elem);
     thread_unblock (t);
@@ -197,6 +200,7 @@ lock_init (struct lock *lock)
   ASSERT (lock != NULL);
 
   lock->holder = NULL;
+  lock->holder_base_priority = PRI_INVALID;
   sema_init (&lock->semaphore, 1);
 }
 
@@ -211,14 +215,52 @@ lock_init (struct lock *lock)
 void
 lock_acquire (struct lock *lock)
 {
+  struct thread *cur = thread_current ();
+  struct thread *donor, *recipient;
+  struct lock *blocking_lock;
+
   ASSERT (lock != NULL);
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
 
   if (!lock_try_acquire (lock)) /* Someone else holding the lock. */
   {
+    cur->blocking_lock = lock;
+
+    if (!thread_mlfqs)
+    {
+      donor = cur;
+      blocking_lock = lock;
+      recipient = blocking_lock->holder;
+
+      /* Support nested donations. */
+      while (true)
+      {
+        if (recipient->priority < donor->priority)
+        {
+          /* Make sure multiple donations to the same thread
+              do not overwrite base_priority. */
+          if (blocking_lock->holder_base_priority == PRI_INVALID)
+            blocking_lock->holder_base_priority = recipient->priority;
+
+          recipient->priority = donor->priority;   /* Donate. */
+
+          if (recipient->status == THREAD_BLOCKED &&
+           recipient->blocking_lock != NULL)
+          {
+            donor = recipient;
+            blocking_lock = recipient->blocking_lock;
+            recipient = blocking_lock->holder;
+          }
+          else
+            break;
+        }
+      }
+    }
+
     sema_down (&lock->semaphore);
-    lock->holder = thread_current ();
+    lock->holder = cur;
+    cur->blocking_lock = NULL;
   }
 }
 
@@ -250,8 +292,17 @@ lock_try_acquire (struct lock *lock)
 void
 lock_release (struct lock *lock) 
 {
+  struct thread *cur = thread_current ();;
+
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
+
+  /* If using donated priority, revert to original priority. */
+  if (lock->holder_base_priority != PRI_INVALID)
+  {
+    cur->priority = lock->holder_base_priority;
+    lock->holder_base_priority = PRI_INVALID;
+  }
 
   lock->holder = NULL;
   sema_up (&lock->semaphore); /* May yield if the newly unblocked thread is of

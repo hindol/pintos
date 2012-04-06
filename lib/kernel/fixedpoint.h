@@ -5,7 +5,7 @@
 #include <stdint.h>
 
 /* Floating point type definition. */
-typedef int64_t fp_t;
+typedef int32_t fp_t;
 
 /* Conversion routines. */
 fp_t int_to_fp (int32_t i);

@@ -570,6 +570,7 @@ init_thread (struct thread *t, const char *name, int priority)
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
+  t->blocking_lock = NULL;
   t->magic = THREAD_MAGIC;
 
   sema_init (&t->timer_sema, 0);  /* Initialize timer_sema with false.
