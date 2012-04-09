@@ -93,8 +93,10 @@ struct thread
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
 
-    struct thread *blocking_lock;       /* A non-NULL value here means this
+    struct lock *blocking_lock;         /* A non-NULL value here means this
                                             thread is waiting on a lock. */
+
+    struct list *locks;                 /* List of locks held by the current thread. */
 
     int64_t wakeup_time;                /* Thread wakeup time in ticks. */
     struct semaphore timer_sema;
